@@ -1,0 +1,16 @@
+# Relatorios gerados pelo script (contem nome da maquina e do operador)
+Relatorio_Limpeza_Disco/
+log_limpeza.txt
+resumo_limpeza.json
+maiores_pastas.csv
+acao_chamado.html
+dism.log
+*.log
+
+# Sistema / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+*.bak
+*.tmp
