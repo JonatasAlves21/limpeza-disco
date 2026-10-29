@@ -30,6 +30,10 @@
          (na pratica ninguem marcava a caixa e ficavam 51 GB no disco).
        - Atributo de nuvem corrigido: RECALL_ON_DATA_ACCESS (0x400000),
          nao so OFFLINE (0x1000).
+       - Pasta de nuvem e seguida na varredura. No OneDrive/SharePoint
+         toda pasta (inclusive a raiz) e reparse point do Cloud Files;
+         pular reparse point deixava a nuvem inteira fora da medicao.
+         Agora so junction/symlink sao pulados (pelo LinkType).
        - Ordenacao numerica e separador decimal consistente.
        - Emite resumo .json e um .html pronto para anexar no chamado.
        - Modo -Auto para execucao sem interacao (ex.: implantacao via MDM).
@@ -196,11 +200,24 @@ function Stop-Step {
 #  Caminhada iterativa com System.IO.DirectoryInfo.Enumerate*:
 #    - nao entra em junction/symlink  -> C:\Users\All Users nao e mais
 #      contado (nem varrido) como se fosse parte de C:\Users
+#    - ENTRA em placeholder de nuvem  -> ver Test-FollowDir
 #    - try/catch por diretorio        -> Access Denied nao aborta o ramo
 #    - FileInfo vem com atributo em cache da enumeracao, sem syscall
 #      extra por arquivo (a diferenca contra Get-ChildItem -Recurse)
 #    - KeyDepth: em quantos niveis abaixo de $Root agregar
 # ------------------------------------------------------------------
+# Reparse point nao e sinonimo de link. No OneDrive/SharePoint toda
+# pasta e reparse point do Cloud Files (placeholder) e precisa ser
+# varrida - e ali que mora o maior consumo da frota. So junction e
+# symlink ficam de fora: LinkType preenchido. Get-Item so roda para
+# pasta reparse (~3 ms cada); falha de acesso conta como "nao seguir".
+function Test-FollowDir {
+    param([System.IO.DirectoryInfo]$Dir)
+    if (-not ($Dir.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { return $true }
+    try   { return -not (Get-Item -LiteralPath $Dir.FullName -Force -ErrorAction Stop).LinkType }
+    catch { return $false }
+}
+
 function Measure-Tree {
     param([string]$Root, [int]$KeyDepth = 0)
 
@@ -230,7 +247,7 @@ function Measure-Tree {
 
         try {
             foreach ($sub in $di.EnumerateDirectories()) {
-                if ($sub.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { continue }
+                if (-not (Test-FollowDir $sub)) { continue }
                 $childDepth = $item.Depth + 1
                 if ($childDepth -le $KeyDepth) { $childKey = $sub.FullName.TrimEnd('\') }
                 else                           { $childKey = $item.Key }
@@ -343,7 +360,7 @@ Write-Log ('[1/12] Disco C:  Total: {0} GB  |  Livre: {1} GB  ({2:N1}% livre)' -
 # ==================================================================
 $st = Start-Step 'Varredura unica (raiz + perfis)'
 Write-Log ''
-Write-Log '[2/12] Varredura de espaco (uma passada, sem seguir junction)'
+Write-Log '[2/12] Varredura de espaco (uma passada; segue nuvem, nao segue junction)'
 
 $usersAgg  = Measure-Tree -Root 'C:\Users' -KeyDepth 3   # C:\Users\<perfil>\<n1>\<n2>
 $usersRoot = (Get-Rollup -Agg $usersAgg -Root 'C:\Users' -Depth 0)['C:\Users']
@@ -352,7 +369,7 @@ $rootRows = New-Object System.Collections.ArrayList
 [void]$rootRows.Add($usersRoot)
 Get-ChildItem 'C:\' -Directory -Force -ErrorAction SilentlyContinue |
     Where-Object {
-        -not ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -and
+        (Test-FollowDir $_) -and
         $_.FullName -ne 'C:\Users'
     } |
     ForEach-Object {

@@ -128,6 +128,10 @@ Teams/Edge/Chrome, lixeira, hibernação desligada e Sensor de Armazenamento ati
   por diretório (Access Denied não aborta o ramo) e agregação em vários níveis numa
   única passada. `Get-Rollup` re-agrega o resultado em outra profundidade sem varrer
   o disco de novo.
+- **Reparse point ≠ link**: no OneDrive/SharePoint toda pasta, inclusive a raiz, é
+  reparse point do Cloud Files. Pular todo reparse point deixava a nuvem inteira
+  fora da varredura. `Test-FollowDir` só descarta o que tem `LinkType` (junction e
+  symlink) e entra nos placeholders de nuvem.
 - **Arquivos sob demanda medidos corretamente**: "no disco" × "total" usa
   `OFFLINE | RECALL_ON_DATA_ACCESS` (`0x401000`), não só `OFFLINE`.
 - **DISM em paralelo com o atendimento**: dispara em segundo plano e só é aguardado
