@@ -1,8 +1,15 @@
 # limpeza-disco
 
-Script PowerShell para atender chamados de **"disco cheio / computador lento"** em
-estações Windows de forma padronizada: primeiro mede, depois limpa com confirmação
-etapa a etapa, e no fim entrega um relatório pronto para anexar ao chamado.
+**Em poucas palavras:** quando um computador fica sem espaço ou lento, o técnico de
+suporte roda este script. Ele faz o atendimento sempre do mesmo jeito:
+
+1. **Mede** o que está ocupando o disco, sem apagar nada.
+2. **Limpa** só o que é seguro, etapa por etapa, pedindo confirmação em cada uma
+   (ou sozinho, sem perguntas, quando roda pela ferramenta de gestão das máquinas).
+3. **Entrega** um relatório com o antes e o depois, pronto para anexar ao chamado.
+
+Documentos, Downloads e perfis do usuário nunca são apagados: o script só aponta e
+sugere o que fazer com eles.
 
 > **Resultado medido em atendimento real (ago/2026):** espaço livre no `C:` foi de
 > **22,75 GB para 44,58 GB** (+21,84 GB liberados, disco com 18,7% livre), sem
